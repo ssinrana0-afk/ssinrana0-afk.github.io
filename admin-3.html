@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة التحكم | Artmerce</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+<style>
+  :root{
+    --blush:#ebebea; --rose:#5e5e5e; --rose-deep:#111111;
+    --plum:#161616; --cream:#f7f7f6; --gold:#a8a8a8; --line:rgba(0,0,0,0.12);
+    --danger:#b3261e;
+    --silver:linear-gradient(100deg,#0b0b0b 0%,#4a4a4a 38%,#bdbdbd 52%,#4a4a4a 66%,#0b0b0b 100%);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--cream); color:var(--plum);
+    font-family:'Tajawal',sans-serif; min-height:100vh;
+  }
+  #lock{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 0%, #4a4a4a 0%, #1a1a1a 55%, #0a0a0a 100%);
+    padding:20px;
+  }
+  .lock-box{
+    background:#fff; border:1px solid var(--line); border-radius:18px;
+    padding:40px 34px; width:100%; max-width:340px; text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,0.25);
+  }
+  .lock-box .brand{ font-family:'Cormorant Garamond',serif; font-weight:600; font-style:italic; direction:ltr; letter-spacing:1.5px; background:var(--silver); background-size:220% 100%; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; animation:sheen 6s ease-in-out infinite alternate; font-size:40px; line-height:1.15; margin-bottom:6px; }
+  @keyframes sheen{ from{background-position:0 0;} to{background-position:100% 0;} }
+  @media (prefers-reduced-motion:reduce){ .brand{animation:none !important;} }
+  .lock-box p{ color:#7a7a7a; font-size:13px; margin-bottom:20px; }
+  .lock-box input{
+    width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--line);
+    font-family:'Tajawal',sans-serif; font-size:15px; margin-bottom:12px; text-align:center;
+  }
+  .lock-box button, .btn{
+    width:100%; padding:12px 14px; border:none; border-radius:10px;
+    background:var(--rose-deep); color:#fff; font-family:'Tajawal',sans-serif;
+    font-weight:700; font-size:15px; cursor:pointer; transition:background .2s;
+  }
+  .lock-box button:hover, .btn:hover{ background:var(--rose); }
+  .btn:disabled{ opacity:0.6; cursor:default; }
+  .err{ color:var(--danger); font-size:13px; margin-top:10px; display:none; }
+
+  #dash{ display:none; }
+  header{
+    padding:16px 6vw; border-bottom:1px solid rgba(255,255,255,0.12);
+    display:flex; align-items:center; justify-content:space-between;
+    background:linear-gradient(180deg,#1c1c1c,#0a0a0a); position:sticky; top:0; z-index:10;
+  }
+  header .brand{ font-family:'Cormorant Garamond',serif; font-weight:600; font-style:italic; font-size:30px; letter-spacing:1.5px; color:#fff; direction:ltr; display:flex; align-items:baseline; gap:12px; }
+  header .brand small{ font-family:'Tajawal',sans-serif; font-style:normal; font-size:12px; letter-spacing:0; color:#bdbdbd; }
+  header a{ color:#e0e0e0; font-size:13px; text-decoration:underline; }
+
+  main{ max-width:900px; margin:0 auto; padding:36px 6vw 80px; }
+
+  .panel{
+    background:#fff; border:1px solid var(--line); border-radius:16px;
+    padding:26px; margin-bottom:34px; box-shadow:0 4px 18px rgba(0,0,0,0.06);
+  }
+  .panel h2{ font-size:18px; margin-bottom:18px; color:var(--rose-deep); }
+  .row{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .field{ flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:12px; color:#7a7a7a; }
+  .field input{
+    padding:11px 13px; border-radius:10px; border:1px solid var(--line);
+    font-family:'Tajawal',sans-serif; font-size:14px;
+  }
+  .previews{ display:flex; gap:10px; flex-wrap:wrap; }
+  .imgpreview{
+    width:90px;height:90px;border-radius:10px;background:var(--blush);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    font-size:11px;color:#8c8c8c;flex-shrink:0;
+  }
+  .imgpreview img{ width:100%;height:100%;object-fit:cover; }
+
+  .list{ display:flex; flex-direction:column; gap:12px; }
+  .item{
+    display:flex; align-items:center; gap:14px; padding:12px;
+    border:1px solid var(--line); border-radius:12px; background:var(--cream);
+  }
+  .item .thumb{
+    width:60px;height:60px;border-radius:8px;background:var(--blush);
+    overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-size:10px;color:#8c8c8c;
+  }
+  .item .thumb img{ width:100%; height:100%; object-fit:cover; }
+  .item .meta{ flex:1; }
+  .item .meta .n{ font-weight:700; font-size:14px; }
+  .item .meta .p{ color:var(--rose-deep); font-size:13px; }
+  .item .del{
+    background:none; border:1px solid var(--danger); color:var(--danger);
+    padding:8px 14px; border-radius:8px; font-size:12px; cursor:pointer; font-family:'Tajawal',sans-serif;
+  }
+  .item .del:hover{ background:var(--danger); color:#fff; }
+  .empty{ color:#8a8a8a; font-size:13px; text-align:center; padding:20px 0; }
+  .saved{ font-size:12px; color:#4a8a5e; margin-top:8px; display:none; }
+
+  /* ===== Cropper modal ===== */
+  .crop-overlay{
+    position:fixed; inset:0; z-index:300; background:rgba(10,10,10,0.92);
+    display:none; align-items:center; justify-content:center; flex-direction:column;
+    padding:24px; gap:18px;
+  }
+  .crop-overlay.open{ display:flex; }
+  .crop-viewport{
+    width:280px; height:280px; border-radius:16px; overflow:hidden;
+    position:relative; background:#111; touch-action:none;
+    box-shadow:0 0 0 3px rgba(255,255,255,0.25);
+  }
+  .crop-viewport img{
+    position:absolute; top:50%; left:50%; max-width:none; max-height:none;
+    user-select:none; -webkit-user-drag:none; cursor:grab;
+  }
+  .crop-controls{ display:flex; align-items:center; gap:10px; width:280px; }
+  .crop-controls input[type=range]{ flex:1; }
+  .crop-controls span{ color:#fff; font-size:16px; }
+  .crop-controls span#cropZoomLabel{ font-size:13px; min-width:44px; text-align:left; direction:ltr; }
+  .crop-hint{ color:rgba(255,255,255,0.6); font-size:12px; text-align:center; }
+  .crop-buttons{ display:flex; gap:12px; width:280px; }
+  .crop-buttons button{
+    flex:1; padding:11px; border-radius:10px; border:none;
+    font-family:'Tajawal',sans-serif; font-weight:700; font-size:14px; cursor:pointer;
+  }
+  .crop-buttons .confirm{ background:var(--rose-deep); color:#fff; }
+  .crop-buttons .skip{ background:rgba(255,255,255,0.15); color:#fff; }
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <div class="lock-box">
+    <div class="brand">Artmerce</div>
+    <p>لوحة التحكم — أدخل كلمة المرور</p>
+    <input type="password" id="pw" placeholder="كلمة المرور">
+    <button onclick="tryLogin()">دخول</button>
+    <div class="err" id="err">كلمة المرور غير صحيحة</div>
+  </div>
+</div>
+
+<div id="dash">
+  <header>
+    <div class="brand">Artmerce <small>لوحة التحكم</small></div>
+    <a href="index.html">عرض الموقع ↗</a>
+  </header>
+  <main>
+    <div class="panel">
+      <h2>صور الشريط العلوي (المعرض المتحرك)</h2>
+      <div class="row">
+        <div class="field">
+          <label>أضيفي صورًا تظهر متحركة أعلى الصفحة (يمكن اختيار أكثر من صورة)</label>
+          <input type="file" id="heroImage" accept="image/*" multiple>
+        </div>
+      </div>
+      <div class="row"><div class="previews" id="heroPreview"></div></div>
+      <div class="row"><div class="list" id="heroList"></div></div>
+    </div>
+
+    <div class="panel">
+      <h2>إضافة منتج جديد</h2>
+      <div class="row">
+        <div class="field">
+          <label>اسم المنتج</label>
+          <input type="text" id="pname" placeholder="مثال: مزهرية سيراميك">
+        </div>
+        <div class="field">
+          <label>الثمن (درهم)</label>
+          <input type="number" id="pprice" placeholder="مثال: 150">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>صور المنتج (يمكن اختيار أكثر من صورة، حتى 4)</label>
+          <input type="file" id="pimage" accept="image/*" multiple>
+        </div>
+      </div>
+      <div class="row"><div class="previews" id="preview"></div></div>
+      <button class="btn" id="addBtn" onclick="addProduct()">إضافة المنتج</button>
+      <div class="saved" id="saved">تمت الإضافة ✓</div>
+    </div>
+
+    <div class="panel">
+      <h2>المنتجات الحالية</h2>
+      <div class="list" id="list"><div class="empty">جاري التحميل...</div></div>
+    </div>
+  </main>
+</div>
+
+<div class="crop-overlay" id="cropOverlay">
+  <div class="crop-viewport" id="cropViewport">
+    <img id="cropImg" src="" alt="">
+  </div>
+  <div class="crop-controls">
+    <span>🔍</span>
+    <input type="range" id="cropZoom" min="1" max="5" step="0.01" value="1">
+    <span id="cropZoomLabel">100%</span>
+  </div>
+  <div class="crop-hint">حرّكي الصورة واضبطي التكبير لاختيار الجزء الذي تريدينه</div>
+  <div class="crop-buttons">
+    <button class="skip" onclick="skipCrop()">تخطي هذه الصورة</button>
+    <button class="confirm" onclick="confirmCrop()">تأكيد</button>
+  </div>
+</div>
+
+<script>
+const PASSWORD = "ranasin2026"; // يمكنك تغيير كلمة المرور من هنا
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA-4n4iV2_Gx3FvdSeI9ylDcIDS_-E5los",
+  authDomain: "ranasin.firebaseapp.com",
+  projectId: "ranasin",
+  storageBucket: "ranasin.firebasestorage.app",
+  messagingSenderId: "86337997894",
+  appId: "1:86337997894:web:9edd6462c5ff1fb57c0e47"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+function tryLogin(){
+  const val = document.getElementById('pw').value;
+  if(val === PASSWORD){
+    document.getElementById('lock').style.display = 'none';
+    document.getElementById('dash').style.display = 'block';
+    sessionStorage.setItem('artmerce_admin','1');
+    listenProducts();
+  } else {
+    document.getElementById('err').style.display = 'block';
+  }
+}
+if(sessionStorage.getItem('artmerce_admin') === '1'){
+  document.getElementById('lock').style.display = 'none';
+  document.getElementById('dash').style.display = 'block';
+  listenProducts();
+}
+
+let currentImages = [];
+let cropQueue = [];
+let cropIndex = 0;
+let cropMode = 'product'; // 'product' or 'hero'
+const VS = 280; // crop viewport size in css px
+const OUT = 1000; // output square size in px
+const OUT_HERO = 1000; // hero banner output size
+let natW = 0, natH = 0, baseScale = 1, zoom = 1, offsetX = 0, offsetY = 0;
+let dragging = false, dragStartX = 0, dragStartY = 0, startOffX = 0, startOffY = 0;
+
+document.getElementById('pimage').addEventListener('change', function(e){
+  cropMode = 'product';
+  cropQueue = Array.from(e.target.files).slice(0, 4);
+  cropIndex = 0;
+  currentImages = [];
+  document.getElementById('preview').innerHTML = '';
+  if(cropQueue.length) startCrop();
+});
+
+document.getElementById('heroImage').addEventListener('change', function(e){
+  cropMode = 'hero';
+  cropQueue = Array.from(e.target.files);
+  cropIndex = 0;
+  if(cropQueue.length) startCrop();
+});
+
+function startCrop(){
+  const file = cropQueue[cropIndex];
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('cropImg');
+    img.onload = () => {
+      natW = img.naturalWidth; natH = img.naturalHeight;
+      baseScale = Math.max(VS / natW, VS / natH);
+      zoom = 1; offsetX = 0; offsetY = 0;
+      document.getElementById('cropZoom').value = 1;
+      document.getElementById('cropZoomLabel').textContent = '100%';
+      renderCrop();
+      document.getElementById('cropOverlay').classList.add('open');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderCrop(){
+  const img = document.getElementById('cropImg');
+  const totalScale = baseScale * zoom;
+  const dispW = natW * totalScale, dispH = natH * totalScale;
+  const maxOffX = Math.max(0, (dispW - VS) / 2);
+  const maxOffY = Math.max(0, (dispH - VS) / 2);
+  offsetX = Math.max(-maxOffX, Math.min(maxOffX, offsetX));
+  offsetY = Math.max(-maxOffY, Math.min(maxOffY, offsetY));
+  img.style.width = natW + 'px';
+  img.style.height = natH + 'px';
+  img.style.transform = `translate(-50%, -50%) translate(${offsetX}px, ${offsetY}px) scale(${totalScale})`;
+}
+
+document.getElementById('cropZoom').addEventListener('input', function(){
+  zoom = parseFloat(this.value);
+  document.getElementById('cropZoomLabel').textContent = Math.round(zoom * 100) + '%';
+  renderCrop();
+});
+
+const viewport = document.getElementById('cropViewport');
+function dragStart(x, y){ dragging = true; dragStartX = x; dragStartY = y; startOffX = offsetX; startOffY = offsetY; }
+function dragMove(x, y){
+  if(!dragging) return;
+  offsetX = startOffX + (x - dragStartX);
+  offsetY = startOffY + (y - dragStartY);
+  renderCrop();
+}
+function dragEnd(){ dragging = false; }
+
+viewport.addEventListener('mousedown', e => dragStart(e.clientX, e.clientY));
+window.addEventListener('mousemove', e => dragMove(e.clientX, e.clientY));
+window.addEventListener('mouseup', dragEnd);
+viewport.addEventListener('touchstart', e => { const t = e.touches[0]; dragStart(t.clientX, t.clientY); }, {passive:true});
+viewport.addEventListener('touchmove', e => { const t = e.touches[0]; dragMove(t.clientX, t.clientY); }, {passive:true});
+viewport.addEventListener('touchend', dragEnd);
+
+function confirmCrop(){
+  const totalScale = baseScale * zoom;
+  const sx = natW/2 - VS/(2*totalScale) - offsetX/totalScale;
+  const sy = natH/2 - VS/(2*totalScale) - offsetY/totalScale;
+  const sSize = VS/totalScale;
+  const outSize = cropMode === 'hero' ? OUT_HERO : OUT;
+  const canvas = document.createElement('canvas');
+  canvas.width = outSize; canvas.height = outSize;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(document.getElementById('cropImg'), sx, sy, sSize, sSize, 0, 0, outSize, outSize);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+
+  if(cropMode === 'hero'){
+    addHeroImage(dataUrl);
+  } else {
+    currentImages.push(dataUrl);
+    const preview = document.getElementById('preview');
+    const div = document.createElement('div');
+    div.className = 'imgpreview';
+    div.innerHTML = `<img src="${dataUrl}">`;
+    preview.appendChild(div);
+  }
+
+  nextCrop();
+}
+
+function skipCrop(){ nextCrop(); }
+
+function nextCrop(){
+  cropIndex++;
+  if(cropIndex < cropQueue.length){
+    startCrop();
+  } else {
+    document.getElementById('cropOverlay').classList.remove('open');
+    document.getElementById('pimage').value = '';
+    document.getElementById('heroImage').value = '';
+  }
+}
+
+// ===== Hero slideshow management =====
+async function addHeroImage(dataUrl){
+  const ref = db.collection('settings').doc('hero');
+  try{
+    const doc = await ref.get();
+    const images = (doc.exists && doc.data().images) ? doc.data().images : [];
+    images.push(dataUrl);
+    await ref.set({ images });
+  }catch(err){
+    alert('تعذر حفظ صورة الشريط، تحققي من الاتصال');
+    console.error(err);
+  }
+}
+
+async function deleteHeroImage(idx){
+  if(!confirm('هل تريدين حذف هذه الصورة من الشريط؟')) return;
+  const ref = db.collection('settings').doc('hero');
+  try{
+    const doc = await ref.get();
+    const images = (doc.exists && doc.data().images) ? doc.data().images : [];
+    images.splice(idx, 1);
+    await ref.set({ images });
+  }catch(err){
+    console.error(err);
+  }
+}
+
+function listenHero(){
+  db.collection('settings').doc('hero').onSnapshot(doc => {
+    const images = (doc.exists && doc.data().images) ? doc.data().images : [];
+    const list = document.getElementById('heroList');
+    document.getElementById('heroPreview').innerHTML = '';
+    if(images.length === 0){
+      list.innerHTML = '<div class="empty">لا توجد صور في الشريط بعد</div>';
+      return;
+    }
+    list.innerHTML = '';
+    images.forEach((img, idx) => {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML = `
+        <div class="thumb"><img src="${img}"></div>
+        <div class="meta"><div class="n">صورة ${idx + 1}</div></div>
+        <button class="del" onclick="deleteHeroImage(${idx})">حذف</button>
+      `;
+      list.appendChild(div);
+    });
+  }, err => console.error(err));
+}
+listenHero();
+
+async function addProduct(){
+  const name = document.getElementById('pname').value.trim();
+  const price = document.getElementById('pprice').value.trim();
+  const addBtn = document.getElementById('addBtn');
+
+  if(!name || !price){
+    alert('من فضلك أدخل اسم المنتج والثمن');
+    return;
+  }
+
+  addBtn.disabled = true;
+  addBtn.textContent = 'جاري الإضافة...';
+
+  try{
+    await db.collection('products').add({
+      name, price,
+      images: currentImages,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('pname').value = '';
+    document.getElementById('pprice').value = '';
+    document.getElementById('pimage').value = '';
+    document.getElementById('preview').innerHTML = '';
+    currentImages = [];
+    const saved = document.getElementById('saved');
+    saved.style.display = 'block';
+    setTimeout(()=> saved.style.display='none', 1800);
+  }catch(err){
+    alert('حدث خطأ أثناء الإضافة، تحققي من الاتصال');
+    console.error(err);
+  }finally{
+    addBtn.disabled = false;
+    addBtn.textContent = 'إضافة المنتج';
+  }
+}
+
+async function deleteProduct(id){
+  if(!confirm('هل تريدين حذف هذا المنتج؟')) return;
+  await db.collection('products').doc(id).delete();
+}
+
+function listenProducts(){
+  db.collection('products').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    const list = document.getElementById('list');
+    if(snapshot.empty){
+      list.innerHTML = '<div class="empty">لا توجد منتجات بعد</div>';
+      return;
+    }
+    list.innerHTML = '';
+    snapshot.forEach(doc => {
+      const p = doc.data();
+      const thumb = (p.images && p.images[0]) || p.image || '';
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML = `
+        <div class="thumb">${thumb ? `<img src="${thumb}">` : 'لا صورة'}</div>
+        <div class="meta">
+          <div class="n">${p.name}</div>
+          <div class="p">${p.price} درهم</div>
+        </div>
+        <button class="del" onclick="deleteProduct('${doc.id}')">حذف</button>
+      `;
+      list.appendChild(div);
+    });
+  }, err => console.error(err));
+}
+</script>
+
+</body>
+</html>
